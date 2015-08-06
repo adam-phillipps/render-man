@@ -10,11 +10,9 @@ class SpotMaker
     creds = Aws::Credentials.new(
       ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
     @s3 = Aws::S3::Client.new(
-      region: ENV['AWS_REGION'],
-      credentials: creds)
+      region: ENV['AWS_REGION'], credentials: creds)
     @ec2 = Aws::EC2::Client.new(
-      region: ENV['AWS_REGION'],
-      credentials: creds)
+      region: ENV['AWS_REGION'], credentials: creds)
     poll
   end
 
@@ -35,7 +33,7 @@ class SpotMaker
   def ratio_of_backlog_to_wip
     byebug
     wip = @s3.list_objects(bucket: 'render-wip').contents.count
-    wip = wip.elq? 0 ? .01 : wip # guards agains dividing by zero
+    wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
     @s3.list_objects(bucket: 'render-test').contents.count / wip
   end
 
@@ -44,14 +42,25 @@ class SpotMaker
       slave_fleet_params(instance_count))
   end
 
-  def slave_fleet_params(instance_count)
+  def slave_fleet_params(instance_count, options={})
+    { spot_price: options[:spot_price],
+    target_capacity: instance_count,
+    launch_specifications: [
+      { image_id: 'ami-9384f7a3',
+      instance_type: 't2.micro' }],
+      iam_instance_profile: {
+        arn: 'arn:aws:iam::828660616807:role/render-man_fleet_request',
+        name: 'render-man_fleet_request'}}
   end
 
   def map_for_required_options(spot_prices)
     byebug
     spot_prices.each.map(&:spot_price_history).flatten.
-      map{ |sph| {spot_price: sph.spot_price, availability_zone: sph.availability_zone, instance_type: sph.instance_type} }.
-        min_by {|sp| sp[:price]}
+      map{ |sph| {
+        spot_price: sph.spot_price, 
+        availability_zone: sph.availability_zone, 
+        instance_type: sph.instance_type} }.
+          min_by {|sp| sp[:price]}
   end
 
   def best_price_and_zone_for(options={})
