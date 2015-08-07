@@ -5,7 +5,7 @@ require 'byebug'
 
 class SpotMaker
   def initialize
-    @backlog = 'render-test'
+    @backlog = 'render-backlog'
     @wip = 'render-wip'
     creds = Aws::Credentials.new(
       ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
@@ -34,7 +34,7 @@ class SpotMaker
     byebug
     wip = @s3.list_objects(bucket: 'render-wip').contents.count
     wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
-    @s3.list_objects(bucket: 'render-test').contents.count / wip
+    @s3.list_objects(bucket: 'render-backlog').contents.count / wip
   end
 
   def start_slaves(instance_count)
