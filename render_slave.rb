@@ -1,8 +1,11 @@
+require 'dotenv'
+Dotenv.load
 require 'aws-sdk'
 require 'byebug'
 
 class RenderSlave
   def initialize
+    @id = id
     @refresh_time = boot_time
     creds = Aws::Credentials.new(
       ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
@@ -12,21 +15,33 @@ class RenderSlave
       credentials: creds)
     @backlog = 'render-test'
     @wip = 'render-wip'
+    # 50.times do |i|
+    #   File.open('/Users/adam/code/render-man/fake_file.txt', 'r') do |f|
+    #     @s3.put_object(bucket: 'render-test', key: "fake_file#{i}", body: f)
+    #   end
+    # end
     byebug
     poll
   end
 
   def boot_time
-    # get ec2 boot time
     Time.now.to_i
+#    @ec2.describe_instances(instance_ids:[@id]).reservations[0].instances[0].launch_time
+  end
+
+  def id
+    'id'
+    # get self instance id with metadata
+    # curl http://169.254.169.254/latest/meta-data/instance-id
   end
 
   def poll
     until should_stop? do
-      job = @s3.list_objects(@backlog).objects.first
+      job = @s3.list_objects(@backlog.name).objects.first
       move_to_wip_with job.key
       run job
     end
+    @ec2.terminate_instancers(ids: [@id])
   end
 
   def low_ratio_of_backlog_to_wip?
@@ -60,13 +75,13 @@ class RenderSlave
 
   def move_to_wip_with(key)
     byebug
-    backlog = @s3_client.buckets[@backlog]
-    wip = @s3_client.buckets[@wip]
-    source_object = backlog.objects[key]
-    target_object = wip.objects[key]
-    source_object.copy_to(target_object)
-    @s3_client.delete_object(
-      bucket: backlog,
+#    backlog = @s3.buckets[@backlog.name]
+#    wip = @s3.buckets[@wip]
+#    source_object = backlog.objects[key]
+#    target_object = wip.objects[key]
+    @wip.objects[key].copy_to(@backlog.objects[key])
+    @s3.delete_object(
+      bucket: @backlog.name,
       key: key)
   end
 end
