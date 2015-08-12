@@ -33,7 +33,7 @@ class SpotMaker
     byebug
     wip = @s3.list_objects(bucket: 'render-wip').contents.count
     wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
-    @s3.list_objects(bucket: 'render-test').contents.count / wip
+    @s3.list_objects(bucket: 'render-backlog').contents.count / wip
   end
 
   def start_slaves(instance_count)
