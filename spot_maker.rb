@@ -5,25 +5,20 @@ require 'byebug'
 
 class SpotMaker
   def initialize
-    @backlog = 'render-test'
-    @wip = 'render-wip'
     creds = Aws::Credentials.new(
       ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
     @s3 = Aws::S3::Client.new(
       region: ENV['AWS_REGION'], credentials: creds)
     @ec2 = Aws::EC2::Client.new(
       region: ENV['AWS_REGION'], credentials: creds)
+    @backlog = @s3.buckets['render-test']
+    @wip = @s3.buckets['render-wip']    
     poll
   end
 
   def run_program
     start_slaves(instance_count) if ratio >= 10
     poll
-  end
-
-  def instance_count
-    byebug
-    if (ratio_of_backlog_to_wip / 10.0).floor
   end
 
   def poll
@@ -34,7 +29,7 @@ class SpotMaker
     end
   end
 
-  def ratio_of_backlog_to_wip
+  def ratio
     byebug
     wip = @s3.list_objects(bucket: 'render-wip').contents.count
     wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
@@ -91,6 +86,13 @@ class SpotMaker
   def add_buffer_to_price_in(options)
     float_price = options[:spot_price].to_f
     options[:spot_price] = ((float_price + (float_price * 0.2)).round(3)).to_s
+  end
+
+  def instance_count
+    byebug
+    backlog_count = @backlog.list_objects.count
+    wip_count = @wip.list_objects.count
+    (backlog_count / 10).floor - wip_count
   end
   
   def all_zones
