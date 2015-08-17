@@ -1,4 +1,5 @@
 .env
+fake_file.txt
 *.gem
 *.rbc
 /.config
