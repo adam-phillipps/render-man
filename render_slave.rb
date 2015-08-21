@@ -6,7 +6,7 @@ require 'httpparty'
 class RenderSlave
   def initialize
     @id = HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
-    @refresh_time = boot_time
+    @boot_time = boot_time
     creds = Aws::Credentials.new(
       ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
     @s3 = Aws::S3::Client.new(region: ENV['AWS_REGION'],
@@ -25,7 +25,7 @@ class RenderSlave
   end
 
   def boot_time
-    @ec2.describe_instances(instance_ids:[@id]).reservations[0].instances[0].launch_time
+    @boot_time ||= @ec2.describe_instances(instance_ids:[@id]).reservations[0].instances[0].launch_time
   end
 
   def poll
@@ -41,11 +41,10 @@ class RenderSlave
   end
 
   def should_stop?
-    if time_left < 300
+    if hour_mark_approaches?
       if death_ratio_acheived?
         true
       else
-        @refresh_time += 3900 # adds another hour and compensates for the 5 minutes
         false
       end
     else
@@ -62,8 +61,8 @@ class RenderSlave
     end
   end
 
-  def time_left
-    3300.0 - (Time.now.to_i - @refresh_time)
+  def hour_mark_approaches?
+    ((Time.now.to_i - @boot_time) % 3600) > 3300
   end
 
   def death_ratio_acheived?
