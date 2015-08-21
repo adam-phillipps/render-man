@@ -1,5 +1,6 @@
 .env
 fake_file.txt
+kill.rb
 *.gem
 *.rbc
 /.config
