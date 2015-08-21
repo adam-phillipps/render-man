@@ -4,110 +4,115 @@ require 'aws-sdk'
 require 'byebug'
 
 class SpotMaker
-  def initialize
-    @backlog = 'render-test'
-    @wip = 'render-wip'
-    creds = Aws::Credentials.new(
-      ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
-    @s3 = Aws::S3::Client.new(
-      region: ENV['AWS_REGION'], credentials: creds)
-    @ec2 = Aws::EC2::Client.new(
-      region: ENV['AWS_REGION'], credentials: creds)
-    poll
-  end
-
-  def run_program
-    ratio = birth_ratio
-    start_slaves(appropriate_ratio_for_starting(ratio)) if ratio >= 10
-    poll
-  end
-
-  def poll
-    poller = Aws::SQS::QueuePoller.new(
-      'https://sqs.us-west-2.amazonaws.com/828660616807/backlog')
-    poller.poll do |msg|     
-      run_program # run_job deletes message after it's finished
+  begin
+    def initialize
+      creds = Aws::Credentials.new(
+        ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
+      @backlog = Aws::S3::Bucket.new(
+        region: 'us-west-2', credentials: creds, name: 'render-test')
+      @wip = Aws::S3::Bucket.new(
+        region: 'us-west-2', credentials: creds, name: 'render-wip-test')    
+      @s3 = Aws::S3::Client.new(
+        region: ENV['AWS_REGION'], credentials: creds)
+      @ec2 = Aws::EC2::Client.new(
+        region: ENV['AWS_REGION'], credentials: creds)
+      @ami_id = @ec2.describe_images(filters: [
+        { name: 'tag:Name', values: ['RenderSlave-initial'] }]).
+          images.first.image_id
+      @spot_fleet_request_ids = []
+#      kill_everything
+      poll
     end
-  end
 
-  def birth_ratio
-    byebug
-    wip = @s3.list_objects(bucket: 'render-wip').contents.count
-    wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
-    @s3.list_objects(bucket: 'render-test').contents.count / wip
-  end
-
-  def start_slaves(instance_count)
-    @ec2.request_spot_fleet(
-      spot_fleet_request_config: slave_fleet_params(instance_count)
-  end
-
-
-  def render_slave_ami
-    @ec2.describe_images(filters: {name: 'Name', values: 'RenderSlave'}).
-      images.first.image_id
-  end
-
-  def map_for_required_options(spot_prices)
-    byebug
-    spot_prices.each.map(&:spot_price_history).flatten.
-      map{ |sph| {
-        spot_price: sph.spot_price, 
-        availability_zone: sph.availability_zone, 
-        instance_type: sph.instance_type} }.
-          min_by {|sp| sp[:price]}
-  end
-
-  def best_price_and_zone_for(options={})
-    spot_prices = []
-    @ec2.describe_spot_price_history(
-    start_time: (Time.now + 86400).iso8601.to_s,# future date yields current spot prices
-    instance_types: [options[:instance_types]],
-    product_descriptions: 'Windows'])
-    best_match = map_for_required_options(spot_prices)
-    best_match[:spot_price] = add_buffer_to_price(best_match[:spot_price])
-    best_match
-  end
-
-  def add_buffer_to_price(price)
-    float_price = price.to_f
-    ((float_price + (float_price * 0.2)).round(3)).to_s
-  end
-  
-  def all_zones
-    @ec2.describe_availability_zones.
-      availability_zones.map(&:zone_name)
-  end
-
-  def available_instance_types
-    ['t1.micro', 't2.micro', 'm3.large']
-  end
-
-  def slave_fleet_params(instance_count)
-    best_match_data = best_price_and_zone_for(
-      instance_type: available_instance_types,
-      product_descriptions: 'Windows'})
-
-    { spot_price: best_match_data[:spot_price],
-    target_capacity: instance_count,
-    iam_fleet_role: 'render-man_fleet_request', # required
-    launch_specifications: spot_fleet_launch_specifications }
-  end
-
-  def spot_fleet_launch_specifications
-    launch_specifications = []
-    available_instance_types.each do |inst_type|
-
-      launch_specifications << {
-        image_id: render_slave_ami,
-        key_name: 'RenderSlave',
-        instance_type: inst_type,
-        monitoring: { enabled: true },
-        iam_instance_profile: {
-          arn: 'arn:aws:iam::828660616807:role/render-man_fleet_request',
-          name: 'render-man_fleet_request'}}
+    def poll
+      poller = Aws::SQS::QueuePoller.new(
+        'https://sqs.us-west-2.amazonaws.com/828660616807/backlog')
+      poller.poll do |msg|
+        poller.delete_message(msg) 
+        run_program
+      end
     end
-    launch_specifications
+
+    def run_program
+      ratio = birth_ratio
+      start_slaves(appropriate_ratio_for_starting(ratio)) if ratio >= 1#0
+      poll
+    end
+
+    def birth_ratio
+      wip = @wip.objects.count.to_f
+      wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
+      (@backlog.objects.count.to_f / wip)
+    end
+
+    def start_slaves(instance_count)
+      
+      fleet = @ec2.request_spot_fleet(
+        spot_fleet_request_config: slave_fleet_params(instance_count))
+      # get instanct numbers or request numbers and store them
+      @spot_fleet_request_ids << fleet.spot_fleet_request_ids
+    end
+
+    def appropriate_ratio_for_starting(count)
+      ratio = (count / 10.0).floor
+      ratio == 0 ? 1 : ratio
+    end
+
+    def slave_fleet_params(instance_count)
+      params = {
+        client_token: 'Render Slave ok',
+        spot_price: '0.12',
+        target_capacity: instance_count,
+        iam_fleet_role: 'arn:aws:iam::828660616807:role/render-man_fleet_request',
+        launch_specifications: slave_fleet_launch_specifications }
+    end
+
+    def slave_fleet_launch_specifications
+      launch_specifications = []
+      available_instance_types.each do |inst_type|
+        launch_specifications << {
+          image_id: @ami_id,
+          key_name: 'RenderSlave',
+          instance_type: 't2.micro',#inst_type,
+          monitoring: { enabled: true }}
+      end
+      launch_specifications
+    end
+
+    def available_instance_types
+      ['m4.large', 'm3.large']
+    end
+
+    def kill_everything
+      begin
+        @ec2.cancel_spot_fleet_requests(
+          spot_fleet_request_ids: all_ids,
+          terminate_instances: true
+        )
+        active_instance_ids = all_ids.map do |id|
+          @ec2.describe_spot_fleet_instances(
+            spot_fleet_request_id: id).
+            active_instances.map{ |x| x.instance_id }.flatten
+          end
+        @ec2.terminate_instances(instance_ids: active_instance_ids)
+      rescue => e
+        puts e
+      end
+    end
+
+    def all_ids
+      (@spot_fleet_request_ids + fleet_request_ids_from_aws).flatten
+    end
+
+    def fleet_request_ids_from_aws
+      @ec2.describe_spot_fleet_requests.spot_fleet_request_configs.
+        map!{ |request| request.spot_fleet_request_id }
+    end
+
+  rescue => e
+    puts e
+    kill_everything
+  end
 end
 
 SpotMaker.new
