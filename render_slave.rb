@@ -1,10 +1,15 @@
 require 'dotenv'
 Dotenv.load
 require 'aws-sdk'
-require 'httpparty'
+require 'httparty'
+require 'pony'
+require 'byebug'
 
 class RenderSlave
   def initialize
+    configure_pony
+    byebug
+    Pony.mail(to: 'adam.phillipps@gmail.com')
     @id = HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
     @boot_time = boot_time
     creds = Aws::Credentials.new(
@@ -87,6 +92,23 @@ class RenderSlave
       bucket: source.name,
       key: key)
     @wip.object key
+  end
+
+  def configure_pony
+    Pony.options = {
+      :subject => "Some Subject",
+      :body => "This is the body.",
+      :via => :smtp,
+      :via_options => {
+        :address              => 'smtp.gmail.com',
+        :port                 => '587',
+        :enable_starttls_auto => true,
+        :user_name            => 'adam.phillipps@gmail.com',
+        :password             => ENV["SMTP_PASSWORD"],
+        :authentication       => :plain, # :plain, :login, :cram_md5, no auth by default
+        :domain               => "localhost.localdomain"
+      }
+    }
   end
 end
 

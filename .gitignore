@@ -1,6 +1,7 @@
 .env
 fake_file.txt
 kill.rb
+.DS_Store
 *.gem
 *.rbc
 /.config
