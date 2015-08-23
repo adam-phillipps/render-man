@@ -86,7 +86,7 @@ class RenderSlave
     @s3.delete_object(
       bucket: source.name,
       key: key)
-    @wip.object key
+    target.object key
   end
 end
 
