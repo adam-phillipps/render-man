@@ -54,7 +54,6 @@ class RenderSlave
 
   def job_in_wip?(job)
     begin
-#      @wip.object(job.key).content_length > 0
       @wip.object(job.key).exists?
     rescue Aws::S3::Errors::NotFound
       puts 'nil job, not moving to wip'
