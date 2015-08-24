@@ -8,25 +8,28 @@ require 'byebug'
 class RenderSlave
   def initialize
     configure_pony
-    byebug
-    Pony.mail(to: 'adam.phillipps@gmail.com')
-    @id = HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
-    @boot_time = boot_time
-    creds = Aws::Credentials.new(
-      ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
-    @s3 = Aws::S3::Client.new(region: ENV['AWS_REGION'],
-      credentials: creds)
-    @s3_resource = Aws::S3::Resource.new(region: ENV['AWS_REGION'],
-      credentials: creds)
-    @ec2 = Aws::S3::Client.new(region: ENV['AWS_REGION'],
-      credentials: creds)
-    @backlog = Aws::S3::Bucket.new(
-      region: 'us-west-2', credentials: creds, name: 'render-test')
-    @wip = Aws::S3::Bucket.new(
-      region: 'us-west-2', credentials: creds, name: 'render-wip-test')
-    @finished = Aws::S3::Bucket.new(
-      region: 'us-west-2', credentials: creds, name: 'render-finished-test')
-    poll
+    begin
+      byebug
+      Pony.mail(to: 'adam.phillipps@gmail.com')
+      @id = HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
+      @boot_time = boot_time
+      creds = Aws::Credentials.new(
+        ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
+      @s3 = Aws::S3::Client.new(region: ENV['AWS_REGION'],
+        credentials: creds)
+      @s3_resource = Aws::S3::Resource.new(region: ENV['AWS_REGION'],
+        credentials: creds)
+      @ec2 = Aws::S3::Client.new(region: ENV['AWS_REGION'],
+        credentials: creds)
+      @backlog = Aws::S3::Bucket.new(
+        region: 'us-west-2', credentials: creds, name: 'render-test')
+      @wip = Aws::S3::Bucket.new(
+        region: 'us-west-2', credentials: creds, name: 'render-wip-test')
+      @finished = Aws::S3::Bucket.new(
+        region: 'us-west-2', credentials: creds, name: 'render-finished-test')
+      poll
+    rescue => e
+      Pony.mail(to: 'adam.phillipps@gmail.com')
   end
 
   def boot_time
