@@ -1,6 +1,8 @@
 .env
 fake_file.txt
 kill.rb
+load_backlog.rb
+spot_request_ids.log
 .DS*
 *.gem
 *.rbc

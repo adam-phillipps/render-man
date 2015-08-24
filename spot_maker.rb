@@ -2,6 +2,7 @@ require 'dotenv'
 Dotenv.load
 require 'aws-sdk'
 require 'byebug'
+require 'date'
 
 class SpotMaker
   begin
@@ -17,17 +18,20 @@ class SpotMaker
       @ec2 = Aws::EC2::Client.new(
         region: ENV['AWS_REGION'], credentials: creds)
       @ami_id = @ec2.describe_images(filters: [
-        { name: 'tag:Name', values: ['RenderSlave-initial'] }]).
+        { name: 'tag:Name', values: ['RenderSlave-new1'] }]).
           images.first.image_id
+      @ami_id ||= 'ami-4f382e7f'
       @spot_fleet_request_ids = []
+      byebug
 #      kill_everything
       poll
     end
 
     def poll
       poller = Aws::SQS::QueuePoller.new(
-        'https://sqs.us-west-2.amazonaws.com/828660616807/backlog')
+        'https://sqs.us-west-2.amazonaws.com/828660616807/backlog_test')
       poller.poll do |msg|
+        byebug
         poller.delete_message(msg) 
         run_program
       end
@@ -41,21 +45,22 @@ class SpotMaker
 
     def birth_ratio
       wip = @wip.objects.count.to_f
-      wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
+      # wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
+      wip = wip == 0 ? 1.0 : wip # guards agains dividing by zero
       (@backlog.objects.count.to_f / wip)
     end
 
-    def start_slaves(instance_count)
-      
+    def start_slaves(instance_count)      
       fleet = @ec2.request_spot_fleet(
         spot_fleet_request_config: slave_fleet_params(instance_count))
       # get instanct numbers or request numbers and store them
+      capture_ids(fleet.spot_fleet_request_ids)
       @spot_fleet_request_ids << fleet.spot_fleet_request_ids
     end
 
-    def appropriate_ratio_for_starting(count)
-      ratio = (count / 10.0).floor
-      ratio == 0 ? 1 : ratio
+    def appropriate_ratio_for_starting(ratio)
+      adjusted_ratio = (ratio / 10.0).floor
+      adjusted_ratio == 0 ? 1 : adjusted_ratio
     end
 
     def slave_fleet_params(instance_count)
@@ -73,7 +78,7 @@ class SpotMaker
         launch_specifications << {
           image_id: @ami_id,
           key_name: 'RenderSlave',
-          instance_type: 't2.micro',#inst_type,
+          instance_type: 't2.medium',#inst_type,
           monitoring: { enabled: true }}
       end
       launch_specifications
@@ -107,6 +112,13 @@ class SpotMaker
     def fleet_request_ids_from_aws
       @ec2.describe_spot_fleet_requests.spot_fleet_request_configs.
         map!{ |request| request.spot_fleet_request_id }
+    end
+
+    def capture_ids(spot_fleet_id)
+      file = File.new('spot_request_ids.log', File::WRONLY | File::APPEND)
+      logger = Logger.new(file)
+      logger.level = Logger::DEBUG
+      logger.info {"#{spot_fleet_id} at #{DateTime.now}\n"}
     end
 
   rescue => e
