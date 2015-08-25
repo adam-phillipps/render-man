@@ -17,7 +17,7 @@ class SpotMaker
       @ec2 = Aws::EC2::Client.new(
         region: ENV['AWS_REGION'], credentials: creds)
       @ami_id = @ec2.describe_images(filters: [
-        { name: 'tag:Name', values: ['RenderSlave-new1'] }]).
+        { name: 'tag:Name', values: ['RenderSlave'] }]).
           images.first.image_id
       @ami_id ||= 'ami-399f8909'
       @spot_fleet_request_ids = []
