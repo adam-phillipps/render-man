@@ -1,7 +1,6 @@
 require 'dotenv'
 Dotenv.load
 require 'aws-sdk'
-require 'byebug'
 require 'date'
 
 class SpotMaker
@@ -22,8 +21,6 @@ class SpotMaker
           images.first.image_id
       @ami_id ||= 'ami-4f382e7f'
       @spot_fleet_request_ids = []
-      byebug
-#      kill_everything
       poll
     end
 
@@ -31,7 +28,6 @@ class SpotMaker
       poller = Aws::SQS::QueuePoller.new(
         'https://sqs.us-west-2.amazonaws.com/828660616807/backlog_test')
       poller.poll do |msg|
-        byebug
         poller.delete_message(msg) 
         run_program
       end
@@ -45,7 +41,6 @@ class SpotMaker
 
     def birth_ratio
       wip = @wip.objects.count.to_f
-      # wip = wip == 0 ? 0.01 : wip # guards agains dividing by zero
       wip = wip == 0 ? 1.0 : wip # guards agains dividing by zero
       (@backlog.objects.count.to_f / wip)
     end
