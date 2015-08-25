@@ -19,7 +19,7 @@ class SpotMaker
       @ami_id = @ec2.describe_images(filters: [
         { name: 'tag:Name', values: ['RenderSlave-new1'] }]).
           images.first.image_id
-      @ami_id ||= 'ami-bdf4e28d'
+      @ami_id ||= 'ami-399f8909'
       @spot_fleet_request_ids = []
       poll
     end
