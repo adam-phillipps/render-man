@@ -49,8 +49,6 @@ class SpotMaker
       fleet = @ec2.request_spot_fleet(
         spot_fleet_request_config: slave_fleet_params(instance_count))
       # get instanct numbers or request numbers and store them
-      capture_ids(fleet.spot_fleet_request_ids)
-      @spot_fleet_request_ids << fleet.spot_fleet_request_ids
     end
 
     def appropriate_ratio_for_starting(ratio)
@@ -73,47 +71,14 @@ class SpotMaker
         launch_specifications << {
           image_id: @ami_id,
           key_name: 'RenderSlave',
-          instance_type: 't2.medium',#inst_type,
+          instance_type: inst_type,
           monitoring: { enabled: true }}
       end
       launch_specifications
     end
 
     def available_instance_types
-      ['m4.large', 'm3.large']
-    end
-
-    def kill_everything
-      begin
-        @ec2.cancel_spot_fleet_requests(
-          spot_fleet_request_ids: all_ids,
-          terminate_instances: true
-        )
-        active_instance_ids = all_ids.map do |id|
-          @ec2.describe_spot_fleet_instances(
-            spot_fleet_request_id: id).
-            active_instances.map{ |x| x.instance_id }.flatten
-          end
-        @ec2.terminate_instances(instance_ids: active_instance_ids)
-      rescue => e
-        puts e
-      end
-    end
-
-    def all_ids
-      (@spot_fleet_request_ids + fleet_request_ids_from_aws).flatten
-    end
-
-    def fleet_request_ids_from_aws
-      @ec2.describe_spot_fleet_requests.spot_fleet_request_configs.
-        map!{ |request| request.spot_fleet_request_id }
-    end
-
-    def capture_ids(spot_fleet_id)
-      file = File.new('spot_request_ids.log', File::WRONLY | File::APPEND)
-      logger = Logger.new(file)
-      logger.level = Logger::DEBUG
-      logger.info {"#{spot_fleet_id} at #{DateTime.now}\n"}
+      ['m3.medium', 'm3.large']
     end
 
   rescue => e
