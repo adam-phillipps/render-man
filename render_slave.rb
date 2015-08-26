@@ -13,7 +13,7 @@ class RenderSlave
       credentials: creds)
     @s3_resource = Aws::S3::Resource.new(region: ENV['AWS_REGION'],
       credentials: creds)
-    @ec2 = Aws::S3::Client.new(region: ENV['AWS_REGION'],
+    @ec2 = Aws::EC2::Client.new(region: ENV['AWS_REGION'],
       credentials: creds)
     @backlog = Aws::S3::Bucket.new(
       region: 'us-west-2', credentials: creds, name: 'render-test')
