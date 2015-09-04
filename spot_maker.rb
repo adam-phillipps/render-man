@@ -17,7 +17,7 @@ class SpotMaker
       @ec2 = Aws::EC2::Client.new(
         region: ENV['AWS_REGION'], credentials: creds)
       @ami_id = @ec2.describe_images(filters: [
-        { name: 'tag:Name', values: ['RenderSlave'] }]).
+        { name: 'tag:Name', values: ['RenderSlave-prod'] }]).
           images.first.image_id
       @ami_id ||= 'ami-875041b7'
       @spot_fleet_request_ids = []
@@ -58,9 +58,10 @@ class SpotMaker
 
     def slave_fleet_params(instance_count)
       params = {
-        client_token: 'Render Slave ok',
+        client_token: "RenderSlave-#{SecureRandom.hex}",
         spot_price: '0.12',
         target_capacity: instance_count,
+        terminate_instances_with_expiration: true,
         iam_fleet_role: 'arn:aws:iam::828660616807:role/render-man_fleet_request',
         launch_specifications: slave_fleet_launch_specifications }
     end
