@@ -28,7 +28,7 @@ class RenderSlave
         region: 'us-west-2', credentials: creds, name: 'render-wip-test')
       @finished = Aws::S3::Bucket.new(
         region: 'us-west-2', credentials: creds, name: 'render-finished-test')
-      @logg = = Aws::S3::Bucket.new(
+      @log = Aws::S3::Bucket.new(
         region: 'us-west-2', credentials: creds, name: 'render-log')
       @logger.info("RenderSlave ID: #{@id} ----> boot time: #{@boot_time}")
       poll
