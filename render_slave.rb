@@ -3,7 +3,6 @@ Dotenv.load
 require 'aws-sdk'
 require 'httparty'
 require 'logger'
-require 'byebug'
 
 class RenderSlave
   def initialize
