@@ -35,7 +35,7 @@ class RenderSlave
       @logger.close
       s3_log(@file)
       @ec2.terminate_instancers(ids: [@id])
-    rescue e
+    rescue => e
       @logger.fatal("FATAL ERROR: #{e}")
       s3_log(@file)
     end
