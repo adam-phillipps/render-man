@@ -7,7 +7,6 @@ require 'byebug'
 
 class RenderSlave
   def initialize
-    byebug
     begin
       @file = File.open('render_slave.log', 'a')#File::APPEND)
       @logger = Logger.new(@file)
@@ -56,7 +55,6 @@ class RenderSlave
   end
 
   def poll
-    byebug
     begin
       until should_stop? do
         sleep rand(571) / 137.0 # offsets polling for other slaves
@@ -108,7 +106,6 @@ class RenderSlave
   end
 
   def run(job)
-    byebug
     unless job.nil?
       @logger.info("running job: #{job.key}")
       # run the render job
