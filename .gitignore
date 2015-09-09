@@ -1,5 +1,5 @@
 .env
-kill.rb
+kill_all.rb
 load_backlog.rb
 spot_request_ids.log
 .DS*

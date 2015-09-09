@@ -9,7 +9,7 @@ class SpotMaker
       creds = Aws::Credentials.new(
         ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
       @backlog = Aws::S3::Bucket.new(
-        region: 'us-west-2', credentials: creds, name: 'render-test')
+        region: 'us-west-2', credentials: creds, name: 'render-backlog-test')
       @wip = Aws::S3::Bucket.new(
         region: 'us-west-2', credentials: creds, name: 'render-wip-test')    
       @s3 = Aws::S3::Client.new(
