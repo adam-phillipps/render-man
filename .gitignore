@@ -2,6 +2,8 @@
 kill_all.rb
 load_backlog.rb
 spot_request_ids.log
+render_slave.log
+adder.rb
 .DS*
 *.gem
 *.rbc
