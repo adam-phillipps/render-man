@@ -37,7 +37,7 @@ class RenderSlave
       poll
       @logger.info("Shutting down after polling...")
       s3_log
-      @ec2.terminate_instances(ids: [@id])
+      @ec2.terminate_instances(instance_ids: [@id])
     rescue => e
       @logger.fatal('render_slave.rb') { "FATAL ERROR: #{e}" }
       s3_log
@@ -114,7 +114,7 @@ class RenderSlave
 
   def s3_log
     log_file = Aws::S3::Object.new(@log.name, "#{@boot_time}->#{@id}", @s3)
-    log_file.upload_file('./render_slave.log')
+    log_file.upload_file(@file.path)
   end
 
   def should_stop?
