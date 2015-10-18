@@ -1,6 +1,7 @@
+require 'aws-sdk'
+Aws.use_bundled_cert!
 require 'dotenv'
 Dotenv.load
-require 'aws-sdk'
 require 'httparty'
 require 'logger'
 require 'date'
@@ -9,11 +10,10 @@ require 'securerandom'
 class RenderSlave
   def initialize
     begin
-      @file = File.open('render_slave.log', 'a+')#, File::APPEND)
+      @file = File.open(File.expand_path('../render_slave.log', __FILE__), 'a+')
       @logger = Logger.new(@file)
       @logger.level = Logger::INFO
-      @id = 'id id id'#HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
-      @boot_time = Time.now.to_i#boot_time
+      @id = HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
       creds = Aws::Credentials.new(
         ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
       @s3 = Aws::S3::Client.new(region: ENV['AWS_REGION'],
@@ -30,13 +30,16 @@ class RenderSlave
         region: 'us-west-2', credentials: creds, name: 'render-finished-test')
       @log = Aws::S3::Bucket.new(
         region: 'us-west-2', credentials: creds, name: 'render-log')
-      @logger.info("RenderSlave ID: #{@id} ----> boot time: #{@boot_time}")
+      boot_time
+      @logger.info("******************************\n" +
+        "********************************************************************************\n" +
+        "RENDERSLAVE #{@id} IS AWAKE\nBOOT TIME: #{@boot_time}\nBEGIN POLLING:\n")
       poll
-      @logger.info("Shutting down...")
+      @logger.info("Shutting down after polling...")
       s3_log
       @ec2.terminate_instances(ids: [@id])
     rescue => e
-      @logger.fatal("FATAL ERROR: #{e}")
+      @logger.fatal('render_slave.rb') { "FATAL ERROR: #{e}" }
       s3_log
     end
   end
@@ -45,12 +48,14 @@ class RenderSlave
     @boot_time ||= @ec2.describe_instances(instance_ids:[@id]).reservations[0].instances[0].launch_time
   end
 
-  def death_ratio_acheived?
+  def death_ratio_achieved?
     ratio <= 10.0
   end
 
   def hour_mark_approaches?
-    ((Time.now.to_i - @boot_time) % 3600) > 3300
+    time_difference = (Time.now.to_i - @boot_time.to_i) % 3600
+    @logger.info("instance time used: #{time_difference} (stops at 3301)")
+    time_difference > 3300
   end
   
   def job_in_wip?(job)
@@ -61,7 +66,7 @@ class RenderSlave
     end
   end
 
-  def move_to(job,source,target)
+  def move_to(job,source,target, additional_info = '')
     key = job.key
     @s3.copy_object(
       bucket: target.name,
@@ -70,6 +75,7 @@ class RenderSlave
     @s3.delete_object(
       bucket: source.name,
       key: key)
+    @logger.info("moving job: #{key}, from: #{source.name} ----> to: #{target.name} " + additional_info)
     target.object key
   end
 
@@ -96,10 +102,13 @@ class RenderSlave
 
   def run(job)
     unless job.nil?
+      start_time = Time.now.to_i
       @logger.info("running job: #{job.key}")
       # run the render job
       sleep 1
-      move_to(job, @wip, @finished)
+      job_run_time = Time.now.to_i - start_time
+      additional_info = "-> job took #{job_run_time.to_s} seconds to run and/or fail"
+      move_to(job, @wip, @finished, additional_info)
     end
   end
 
@@ -111,8 +120,8 @@ class RenderSlave
   def should_stop?
     if hour_mark_approaches?
       @logger.info("Hour mark approaching: #{@boot_time} -> #{DateTime.now}")
-      if death_ratio_acheived?
-        @logger.info("Death ratio (#{ratio}) acheived")
+      if death_ratio_achieved?
+        @logger.info("Death ratio (#{ratio}) achieved")
         true
       else
         false
