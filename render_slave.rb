@@ -6,6 +6,7 @@ require 'httparty'
 require 'logger'
 require 'date'
 require 'securerandom'
+require 'byebug'
 
 class RenderSlave
   def initialize
@@ -31,13 +32,16 @@ class RenderSlave
       @log = Aws::S3::Bucket.new(
         region: 'us-west-2', credentials: creds, name: 'render-log')
       boot_time
+      @boot_time = Time.now
       @logger.info("******************************\n" +
         "********************************************************************************\n" +
         "RENDERSLAVE #{@id} IS AWAKE\nBOOT TIME: #{@boot_time}\nBEGIN POLLING:\n")
       poll
       @logger.info("Shutting down after polling...")
       s3_log
-      @ec2.terminate_instances(instance_ids: [@id])
+      sleep 10
+      @ec2.stop_instances(instance_ids: [@id])
+      #@ec2.terminate_instances(instance_ids: [@id])
     rescue => e
       @logger.fatal('render_slave.rb') { "FATAL ERROR: #{e}" }
       s3_log
@@ -113,13 +117,13 @@ class RenderSlave
   end
 
   def s3_log
-    log_file = Aws::S3::Object.new(@log.name, "#{@boot_time}->#{@id}", @s3)
+    log_file = Aws::S3::Object.new(@log.name, "#{@boot_time} --> #{@id}", @s3)
     log_file.upload_file(@file.path)
   end
 
   def should_stop?
     if hour_mark_approaches?
-      @logger.info("Hour mark approaching: #{@boot_time} -> #{DateTime.now}")
+      @logger.info("Hour mark approaching: #{@boot_time} --> #{DateTime.now}")
       if death_ratio_achieved?
         @logger.info("Death ratio (#{ratio}) achieved")
         true
