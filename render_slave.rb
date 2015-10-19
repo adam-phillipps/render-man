@@ -40,7 +40,7 @@ class RenderSlave
       @logger.info("Shutting down after polling...")
       s3_log
       sleep 10
-      @ec2.stop_instances(instance_ids: [@id])
+      #@ec2.stop_instances(instance_ids: [@id])
       #@ec2.terminate_instances(instance_ids: [@id])
     rescue => e
       @logger.fatal('render_slave.rb') { "FATAL ERROR: #{e}" }
