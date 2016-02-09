@@ -1,0 +1,21 @@
+{
+  "IamFleetRole": "arn:aws:iam::088617881078:role/aws-ec2-spot-fleet-role",
+  "AllocationStrategy": "lowestPrice",
+  "TargetCapacity": 1,
+  "SpotPrice": "0.03",
+  "ValidFrom": "2016-02-02T04:08:39Z",
+  "ValidUntil": "2017-02-02T04:08:39Z",
+  "TerminateInstancesWithExpiration": true,
+  "LaunchSpecifications": [
+    {
+      "ImageId": "ami-d93622b8",
+      "InstanceType": "t1.micro",
+      "KeyName": "spotmaker",
+      "SecurityGroups": [
+        {
+          "GroupId": "sg-aaf332cd"
+        }
+      ]
+    }
+  ]
+}

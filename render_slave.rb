@@ -48,7 +48,13 @@ class RenderSlave
     end
   end
 
+  def local_wip
+    @local_wip ||= 'C:\\\\wip'
+  end
+
   def boot_time
+  # this needs to be able to figure out how long the render jobs (even the ones after the first one) took
+  # and probably be able to map these times to the customer used.  (multi-tenant)
     @boot_time ||= @ec2.describe_instances(instance_ids:[@id]).reservations[0].instances[0].launch_time
   end
 
