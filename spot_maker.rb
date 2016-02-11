@@ -8,6 +8,13 @@ require 'securerandom'
 class SpotMaker
   begin
     def initialize
+      byebug
+      # this decides how many instances need to run and/or start.  this is the denominator
+      # of the ratio    ->     backlog / wip
+      JOBS_RATIO_DENOMINATOR = 10
+      IAM_FLEET_ROLE = 'arn:aws:iam::828660616807:role/render-man_fleet_request'
+      
+      byebug
       poll
     end
 
@@ -19,7 +26,7 @@ class SpotMaker
     end
 
     def birth_ratio_acheived?
-      birth_ratio >= 10
+      birth_ratio >= JOBS_RATIO_DENOMINATOR
     end
 
     def birth_ratio
@@ -36,19 +43,18 @@ class SpotMaker
     end
 
     def adjusted_birth_ratio
-      adjusted_ratio = (birth_ratio / 10.0).floor
+      adjusted_ratio = (birth_ratio / JOBS_RATIO_DENOMINATOR).floor
       adjusted_ratio == 0 ? 1 : adjusted_ratio
     end
 
     def run_program(desired_instance_count)
-      # ec2.request_spot_fleet(
-      #   spot_fleet_request_config: slave_fleet_params(desired_instance_count)
-      # )
+      ec2.request_spot_fleet(
+        dry_run: true,
+        spot_fleet_request_config: slave_fleet_params(desired_instance_count)
+      )
       poll
     end
 
-    # doesn't cache the values in case tags change on the ami, which allows us to change configuration
-    # in the aws console.
     def slave_fleet_params(instance_count)
       bp = best_price # only want the method to run once
       price = bp[:spot_price] 
@@ -58,22 +64,24 @@ class SpotMaker
         spot_price: price, # '0.12',
         target_capacity: instance_count,
         terminate_instances_with_expiration: true,
-        iam_fleet_role: 'arn:aws:iam::828660616807:role/render-man_fleet_request',
+        iam_fleet_role: IAM_FLEET_ROLE,
         launch_specifications: slave_fleet_launch_specifications(availability_zone)
       }
     end
 
     def best_price(image = slave_image)
-      best_match = spot_prices.each.map(&:spot_price_history).flatten.map do |sph|
-                                                                                                        { 
-                                                                                                          spot_price: sph.spot_price,
-                                                                                                          availability_zone: sph.availability_zone,
-                                                                                                          instance_type: sph.instance_type 
-                                                                                                        }
-                                                                                                      end.min_by { |sp| sp[:price] }
+      best_match = spot_prices.each.map(&:spot_price_history).
+                                flatten.map do |sph|
+                                  { 
+                                    spot_price: sph.spot_price,
+                                    availability_zone: sph.availability_zone,
+                                    instance_type: sph.instance_type 
+                                  }
+                                end.min_by { |sp| sp[:price] }
 
       # make sure this markup in max spot price is wanted
-      best_match[:spot_price] = (best_match[:spot_price].to_f + (best_match[:spot_price].to_f*0.15)).round(3).to_s
+      best_match[:spot_price] = (best_match[:spot_price].to_f +
+                                                (best_match[:spot_price].to_f*0.15)).round(3).to_s
       best_match
     end
 
@@ -81,7 +89,9 @@ class SpotMaker
       @spot_prices = []
       if @spot_prices.empty?
         availability_zones.each do |az|
-          @spot_prices << ec2.describe_spot_price_history(spot_price_history_params(az))
+          @spot_prices << ec2.describe_spot_price_history(
+            spot_price_history_params(az)
+          )
         end
       end
       @spot_prices # this is a hash with the availability zone, instance type and recommended bid
@@ -112,7 +122,8 @@ class SpotMaker
     end
 
     def availability_zones
-      @az ||= ec2.describe_availability_zones.availability_zones.map(&:zone_name)
+      @az ||= ec2.describe_availability_zones.
+                      availability_zones.map(&:zone_name)
     end
 
     def spot_price_history_params(availability_zone)
