@@ -13,6 +13,8 @@ spot_request_ids.log
 /test/tmp/
 /test/version_tmp/
 /tmp/
+.byebug_history
+render_slave*
 
 ## Specific to RubyMotion:
 .dat*

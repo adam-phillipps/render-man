@@ -20,6 +20,7 @@ GEM
       minitest (~> 5.1)
       thread_safe (~> 0.3, >= 0.3.4)
       tzinfo (~> 1.1)
+    activesupport-core-ext (4.0.0.3)
     aws-sdk (2.2.15)
       aws-sdk-resources (= 2.2.15)
     aws-sdk-core (2.2.15)
@@ -31,6 +32,11 @@ GEM
     diff-lcs (1.2.5)
     dotenv (2.1.0)
     erubis (2.7.0)
+    gmail (0.6.0)
+      gmail_xoauth (>= 0.3.0)
+      mail (>= 2.2.1)
+    gmail_xoauth (0.4.1)
+      oauth (>= 0.3.6)
     httparty (0.13.7)
       json (~> 1.8)
       multi_xml (>= 0.5.2)
@@ -39,11 +45,15 @@ GEM
     json (1.8.3)
     loofah (2.0.3)
       nokogiri (>= 1.5.9)
+    mail (2.6.3)
+      mime-types (>= 1.16, < 3)
+    mime-types (2.99)
     mini_portile2 (2.0.0)
     minitest (5.8.4)
     multi_xml (0.5.5)
     nokogiri (1.6.7.2)
       mini_portile2 (~> 2.0.0.rc2)
+    oauth (0.4.7)
     rack (1.6.4)
     rack-test (0.6.3)
       rack (>= 1.0)
@@ -82,22 +92,29 @@ GEM
       rspec-mocks (~> 3.4.0)
       rspec-support (~> 3.4.0)
     rspec-support (3.4.1)
+    rubyzip (1.1.7)
     thor (0.19.1)
     thread_safe (0.3.5)
     tzinfo (1.2.2)
       thread_safe (~> 0.1)
+    zip-zip (0.3)
+      rubyzip (>= 1.0.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  activesupport-core-ext
   aws-sdk (~> 2)
   bundler
   byebug
   dotenv
+  gmail
   httparty
   rspec
   rspec-rails
+  rubyzip
+  zip-zip
 
 BUNDLED WITH
    1.11.2

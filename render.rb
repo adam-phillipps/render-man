@@ -1,0 +1,83 @@
+require 'dotenv'
+Dotenv.load
+require 'aws-sdk'
+Aws.use_bundled_cert!
+require 'httparty'
+require 'byebug'
+require 'logger'
+require 'zip/zip'
+
+module Render
+ def s3
+    Aws::S3::Client.new(
+      region: ENV['AWS_REGION'],
+      credentials: creds
+    )
+  end
+
+  def backlog_poller
+    Aws::SQS::QueuePoller.new(backlog_address)
+  end
+
+  def backlog_address
+    'https://sqs.us-west-2.amazonaws.com/088617881078/backlog_smashanalytics_sqs'
+  end
+
+  def sqs
+    Aws::SQS::Client.new(credentials: creds)
+  end
+  
+  def wip_address
+    'https://sqs.us-west-2.amazonaws.com/088617881078/wip_smashanalytics_sqs'
+  end
+
+  def finished_address
+    'https://sqs.us-west-2.amazonaws.com/088617881078/finished_smashanalytics_sqs'
+  end
+
+   def ec2
+    Aws::EC2::Client.new(region: ENV['AWS_REGION'],
+      credentials: creds)
+  end
+
+  def creds
+    Aws::Credentials.new(
+      ENV['AWS_ACCESS_KEY_ID'], ENV['AWS_SECRET_ACCESS_KEY'])
+  end
+
+  def setup_logger
+    logger_client = Logger.new(
+      File.open(File.expand_path('../render_slave.log', __FILE__), 'a+')
+    )
+    logger_client.level = Logger::INFO
+    logger_client
+  end
+
+  def logger
+  #   logger.info("\njob started: #{stats.last_message_received_at}\n#{JSON.parse(msg.body)}\n#{msg}\n\n")
+  #  @logger_client ||= setup_logger
+  end
+
+  def output_key_prefix
+    "elastic-transcoder-samples/output/#{key}"
+  end
+
+
+  def sqs_queue_url
+    'https://sqs.us-west-2.amazonaws.com/088617881078/TranscodeSQS'
+  end
+
+  def pipeline_id
+    '1455738654419-y15fhb'
+  end
+
+
+  def preset_id
+    # '1351620000001-000020'
+    '1455845953216-vpfmx1'
+  end
+
+  def region
+    'us-west-2'
+  end
+end
