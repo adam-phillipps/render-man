@@ -1,15 +1,3 @@
-# require 'dotenv'
-# Dotenv.load
-# require 'aws-sdk'
-# Aws.use_bundled_cert!
-# require 'httparty'
-# require 'byebug'
-# require 'logger'
-# require 'zip/zip'
-# require '/Users/adam/code/render-man/job'
-# require '/Users/adam/code/render-man/render'
-# require 'Digest'
-# require_relative 'SqsQueueNotificationWorker'
 require_relative './render'
 require_relative './job'
 
