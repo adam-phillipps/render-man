@@ -59,21 +59,23 @@ module Render
   end
 
   def output_key_prefix
-    "elastic-transcoder-samples/output/#{key}"
+    key.split('_').first + '/'
   end
 
+  def video_in
+    'finished-pointway'
+  end
 
   def sqs_queue_url
     'https://sqs.us-west-2.amazonaws.com/088617881078/TranscodeSQS'
   end
 
   def pipeline_id
-    '1455738654419-y15fhb'
+    '1456107551216-9skecp'
   end
 
 
   def preset_id
-    # '1351620000001-000020'
     '1455845953216-vpfmx1'
   end
 

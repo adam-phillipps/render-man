@@ -8,13 +8,10 @@ require 'securerandom'
 class SpotMaker
   begin
     def initialize
-      byebug
       # this decides how many instances need to run and/or start.  this is the denominator
       # of the ratio    ->     backlog / wip
       JOBS_RATIO_DENOMINATOR = 10
       IAM_FLEET_ROLE = 'arn:aws:iam::828660616807:role/render-man_fleet_request'
-      
-      byebug
       poll
     end
 
@@ -111,7 +108,6 @@ class SpotMaker
     end
 
     def slave_image_tag_filter(tag_name)
-      byebug
       slave_image.tags.find { |t| t.key.include?(tag_name) }.value.split(',')
     end
 

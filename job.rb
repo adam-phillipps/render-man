@@ -1,5 +1,4 @@
 require_relative './render'
-require 'securerandom'
 
 class Job
   include Render
@@ -26,7 +25,8 @@ class Job
     transcoder_client = Aws::ElasticTranscoder::Client.new(region: region, credentials: creds)
     input = { key: input_key }
     output = {
-      key: Digest::SHA256.hexdigest(input_key.encode('UTF-8')),
+      # key: Digest::SHA256.hexdigest(input_key.encode('UTF-8')),
+      key: finished_key,
       preset_id: preset_id
     }
 
@@ -41,8 +41,8 @@ class Job
   def delete_from_local_context
     puts 'deleting from local'
     if File.file?(File.join('/', 'Users', 'adam', 'code', 'F', 'Done'))
-      # FileUtils.rm_rf Dir.glob("#{file_path}/*")
-      FileUtils.rm_rf("/Users/adam/code/F/finished/#{key}")
+      FileUtils.rm_rf Dir.glob("#{dir_path}/*")
+      # FileUtils.rm_rf("/Users/adam/code/F/finished/#{key}")
     end
   end
 
@@ -58,6 +58,11 @@ class Job
     File.file?(File.join('/', 'Users', 'adam', 'code', 'F', 'Done'))
   end
 
+  def dir_path
+    location = done_file_exists? ? 'finished' : 'backlog'
+    File.join('/', 'Users', 'adam', 'code', 'F', location)
+  end
+
   def file_path # fix name/path for windows
     location = done_file_exists? ? 'finished' : 'backlog'
     File.join('/', 'Users', 'adam', 'code', 'F', location, key)
@@ -65,6 +70,10 @@ class Job
 
   def key
     body['Records'].first['s3']['object']['key']
+  end
+
+  def finished_key
+    finished_file_path.split('/').last
   end
 
   def next_board
@@ -81,12 +90,12 @@ class Job
 
   def pull_file_from_backlog
     puts 'pulling from backlog'
-      s3.get_object(
-        response_target: file_path,
-        bucket: 'backlog-pointway', # customer in
-        key: key
-      )
-      puts 'finished pulling'
+    resp = s3.get_object(
+      response_target: file_path,
+      bucket: 'backlog-pointway', # customer in
+      key: key
+    )
+    puts 'finished pulling'
   end
 
   def receipt_handle
@@ -135,7 +144,11 @@ class Job
     end
   end
 
-  def push_file_when_finished
+  def finished_file_path
+    Dir.glob(file_path.gsub('.zip','*')).first
+  end
+
+  def push_file
     loop do
       return push_file_to_video_in if done_file_exists?
       sleep 3 # wait longer for the done file, if it doesn't exist yet
@@ -144,13 +157,10 @@ class Job
 
   def push_file_to_video_in
     puts 'pushing to finished bucket'
-    resp = 'asplode'
-    File.open(file_path, 'rb') do |file|
-      puts "Pushing file:\n#{key}\n"
-      name = SecureRandom.hex
-      # resp = s3.put_object(bucket: 'finished-pointway', key: key.sub('.zip', ''), body: file)
-      # resp = s3.put_object(bucket: 'finished-pointway', key: name, body: file)
-      resp = s3.put_object(bucket: 'videos3-in', key: name, body: file)
+    resp = ''
+    File.open(finished_file_path, 'rb') do |file|
+      puts "Pushing file:\n#{finished_file_path}\n"
+      resp = s3.put_object(bucket: video_in, key: finished_file_path, body: file)
       file.close
     end
     resp
@@ -166,14 +176,13 @@ class Job
   def transcode_from_video_in
     puts 'transcode job started...'
     transcode_job_id = ''
-    File.open(file_path, 'rb') do |file|
-      transcode_job_id = create_elastic_transcoder_job(key, preset_id, output_key_prefix)
+    File.open(finished_file_path, 'rb') do |file|
+      transcode_job_id = create_elastic_transcoder_job(finished_file_path, preset_id, output_key_prefix)
     end
     puts transcode_job_id
   end
 
   def clean_up_for_next_job
-    byebug
     delete_from_local_context
     if File.file?(File.join('/', 'Users', 'adam', 'code', 'F', 'Done'))
       File.delete(File.join('/', 'Users', 'adam', 'code', 'F', 'Done')) # fix for windows path

@@ -75,10 +75,8 @@ class Worker
       job.update_status
       job.unzip_file_and_unpack
       job.signal_a_e_to_start
-      FileUtils.mv("/Users/adam/code/F/backlog/#{job.key}", "/Users/adam/code/F/finished/#{job.key}")
-      job.push_file_when_finished
+      job.push_file
       job.transcode_from_video_in
-      # find a way to update status to finished/ delete from wip
       job.clean_up_for_next_job
     else
       puts "*********************************'\n\
