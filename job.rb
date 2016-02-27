@@ -60,6 +60,10 @@ class Job
     File.join(a_e_dir, location)
   end
 
+  def output_key_prefix
+    key.split('_').first + '/'
+  end
+
   def file_path # fix name/path for windows
     location = done_file_exists? ? 'finished' : 'backlog'
     File.join(a_e_dir, location, key)
@@ -174,7 +178,7 @@ class Job
     puts 'transcode job started...'
     transcode_job_id = ''
     File.open(finished_file_path, 'rb') do |file|
-      transcode_job_id = create_elastic_transcoder_job(finished_file_path, preset_id, output_key_prefix)
+      transcode_job_id = create_elastic_transcoder_job(finished_key, preset_id, output_key_prefix)
     end
     puts transcode_job_id
   end

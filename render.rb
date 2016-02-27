@@ -16,7 +16,8 @@ module Render
   end
 
   def a_e_dir
-    File.join('/', 'Users', 'adam', 'code', 'F') # File.join('F:')
+    File.join('F:')
+    # File.join('/', 'Users', 'adam', 'code', 'F')
   end
 
   def backlog_poller
@@ -60,10 +61,6 @@ module Render
   def logger
   #   logger.info("\njob started: #{stats.last_message_received_at}\n#{JSON.parse(msg.body)}\n#{msg}\n\n")
   #  @logger_client ||= setup_logger
-  end
-
-  def output_key_prefix
-    key.split('_').first + '/'
   end
 
   def video_in
