@@ -25,7 +25,6 @@ class Job
     transcoder_client = Aws::ElasticTranscoder::Client.new(region: region, credentials: creds)
     input = { key: input_key }
     output = {
-      # key: Digest::SHA256.hexdigest(input_key.encode('UTF-8')),
       key: finished_key,
       preset_id: preset_id
     }
@@ -60,6 +59,10 @@ class Job
     File.join(a_e_dir, location)
   end
 
+  def output_key_prefix
+    key.split('_').first + '/'
+  end
+
   def file_path # fix name/path for windows
     location = done_file_exists? ? 'finished' : 'backlog'
     File.join(a_e_dir, location, key)
@@ -70,7 +73,7 @@ class Job
   end
 
   def finished_key
-    key.gsub('.zip', '.mov')
+    key.gsub('.zip', '.mp4')
   end
 
   def next_board
@@ -96,22 +99,26 @@ class Job
   end
 
   def receipt_handle
-    @receipt_handle ||= msg.receipt_handle
+    @receipt_handle = msg.receipt_handle
   end
 
   def update_status
-    resp = sqs.send_message(
+    sqs.send_message(
       queue_url: next_board,
       message_body: plain_text_body
     )
-
     @board = next_board
+    delete_from_previous_board
+  end
+
+  def delete_from_previous_board
+    if @board == wip_address
+      wip_poller.poll(max_number_of_messages: 1) { |msg| puts msg.inspect }
+    elsif @board == baocklog_address
     sqs.delete_message(
       queue_url: previous_board,
       receipt_handle: receipt_handle
-    )
-
-    @wip_message_id = resp.message_id
+    ) # delete from finished board?
   end
 
   def unzip_file_and_unpack
@@ -165,7 +172,6 @@ class Job
   def signal_a_e_to_start
     puts 'signaling ae to start'
     File.delete(File.join(a_e_dir, 'Done')) if done_file_exists?
-    File.rename(Dir.glob("#{a_e_dir}/**/*.mp4").first, finished_file_path.gsub('backlog', 'finished')) ##################testing
     f = File.new(File.join(a_e_dir, 'Go'), 'w')
     f.close
   end
@@ -174,16 +180,14 @@ class Job
     puts 'transcode job started...'
     transcode_job_id = ''
     File.open(finished_file_path, 'rb') do |file|
-      transcode_job_id = create_elastic_transcoder_job(finished_file_path, preset_id, output_key_prefix)
+      transcode_job_id = create_elastic_transcoder_job(finished_key, preset_id, output_key_prefix)
     end
     puts transcode_job_id
   end
 
   def clean_up_for_next_job
     delete_from_local_context
-    if File.file?(File.join(a_e_dir, 'Done'))
-      File.delete(File.join(a_e_dir, 'Done')) # fix for windows path
-    end
+    File.delete(File.join(a_e_dir, 'Done')) if File.file?(File.join(a_e_dir, 'Done'))
     delete_from_backlog_queue
     delete_from_backlog_bucket
     delete_from_local_context
