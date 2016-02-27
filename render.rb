@@ -8,11 +8,15 @@ require 'logger'
 require 'zip/zip'
 
 module Render
- def s3
+  def s3
     Aws::S3::Client.new(
       region: ENV['AWS_REGION'],
       credentials: creds
     )
+  end
+
+  def a_e_dir
+    File.join('/', 'Users', 'adam', 'code', 'F') # File.join('F:')
   end
 
   def backlog_poller

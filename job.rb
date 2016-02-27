@@ -40,10 +40,7 @@ class Job
 
   def delete_from_local_context
     puts 'deleting from local'
-    if File.file?(File.join('/', 'Users', 'adam', 'code', 'F', 'Done'))
-      FileUtils.rm_rf Dir.glob("#{dir_path}/*")
-      # FileUtils.rm_rf("/Users/adam/code/F/finished/#{key}")
-    end
+    FileUtils.rm_rf Dir.glob("#{dir_path}/*")
   end
 
   def delete_from_backlog_bucket
@@ -55,17 +52,17 @@ class Job
   end
 
   def done_file_exists?
-    File.file?(File.join('/', 'Users', 'adam', 'code', 'F', 'Done'))
+    File.file?(File.join(a_e_dir, 'Done'))
   end
 
   def dir_path
     location = done_file_exists? ? 'finished' : 'backlog'
-    File.join('/', 'Users', 'adam', 'code', 'F', location)
+    File.join(a_e_dir, location)
   end
 
   def file_path # fix name/path for windows
     location = done_file_exists? ? 'finished' : 'backlog'
-    File.join('/', 'Users', 'adam', 'code', 'F', location, key)
+    File.join(a_e_dir, location, key)
   end
 
   def key
@@ -73,7 +70,7 @@ class Job
   end
 
   def finished_key
-    finished_file_path.split('/').last
+    key.gsub('.zip', '.mov')
   end
 
   def next_board
@@ -120,10 +117,9 @@ class Job
   def unzip_file_and_unpack
     if file_path =~ /\.zip/
       unzip_file
-      origin = file_path
       destination = '/Users/adam/code/F/backlog/'
 
-      Dir.glob(File.join(origin, '*')).each do |file|
+      Dir.glob(File.join(file_path, '*')).each do |file|
         if File.exists? File.join(destination, File.basename(file))
           FileUtils.move file, File.join(destination, "1-#{File.basename(file)}")
         else
@@ -137,7 +133,7 @@ class Job
     puts 'unzipping file'  
     Zip::ZipFile.open(file_path) do |zip_file|
      zip_file.each do |f|
-       f_path = File.join('/', 'Users', 'adam', 'code', 'F', 'backlog', f.name)
+       f_path = File.join(a_e_dir, 'backlog', f.name)
        FileUtils.mkdir_p(File.dirname(f_path))
        zip_file.extract(f, f_path) unless File.exist?(f_path)
      end
@@ -145,7 +141,7 @@ class Job
   end
 
   def finished_file_path
-    Dir.glob(file_path.gsub('.zip','*')).first
+    file_path.gsub('.zip', '.mov')
   end
 
   def push_file
@@ -160,7 +156,7 @@ class Job
     resp = ''
     File.open(finished_file_path, 'rb') do |file|
       puts "Pushing file:\n#{finished_file_path}\n"
-      resp = s3.put_object(bucket: video_in, key: finished_file_path, body: file)
+      resp = s3.put_object(bucket: video_in, key: finished_key, body: file)
       file.close
     end
     resp
@@ -168,8 +164,9 @@ class Job
 
   def signal_a_e_to_start
     puts 'signaling ae to start'
-    File.delete(File.join('/', 'Users', 'adam', 'code', 'F', 'Done')) if done_file_exists?
-    f = File.new(File.join('/', 'Users', 'adam', 'code', 'F', 'Go'), 'a+')
+    File.delete(File.join(a_e_dir, 'Done')) if done_file_exists?
+    File.rename(Dir.glob("#{a_e_dir}/**/*.mp4").first, finished_file_path.gsub('backlog', 'finished')) ##################testing
+    f = File.new(File.join(a_e_dir, 'Go'), 'w')
     f.close
   end
 
@@ -184,8 +181,8 @@ class Job
 
   def clean_up_for_next_job
     delete_from_local_context
-    if File.file?(File.join('/', 'Users', 'adam', 'code', 'F', 'Done'))
-      File.delete(File.join('/', 'Users', 'adam', 'code', 'F', 'Done')) # fix for windows path
+    if File.file?(File.join(a_e_dir, 'Done'))
+      File.delete(File.join(a_e_dir, 'Done')) # fix for windows path
     end
     delete_from_backlog_queue
     delete_from_backlog_bucket

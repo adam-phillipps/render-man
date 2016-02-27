@@ -3,10 +3,13 @@ require_relative './job'
 
 class Worker
   include Render
+
+  DEATH_THREASHOLD = 10
+  POLLING_SLEEP_TIME = 3
+
   def initialize
     poll
   end
-
 
   def boot_time
     @instance_boot_time ||= Time.now.to_i#ec2.describe_instances(instance_ids:[self_id]).reservations[0].instances[0].launch_time
@@ -15,25 +18,28 @@ class Worker
   def poll
     until should_stop? do
       puts 'Polling....'
-      sleep rand((571 / 137.0) * 100) / 100
+      sleep rand(POLLING_SLEEP_TIME)
       backlog_poller.poll(
         wait_time_seconds: nil,
         max_number_of_messages: 1,
         visibility_timeout: 30 # keep message invisible long enough to process to wip
       ) do |msg, stats|
-        puts 'Polling....'
-        # begin
-        if JSON.parse(msg.body).has_key?('Records')
-          puts "\n\nRunable job found:\n#{JSON.parse(msg.body)}"
-          job = Job.new(msg, backlog_address)
-          run_job(job)
-          puts "finished job:\n #{job.key}\n\n"
-        else
-          sqs.delete_message({
-            queue_url: backlog_address,
-            receipt_handle: msg.receipt_handle
-          })
+        begin
+          if JSON.parse(msg.body).has_key?('Records')
+            puts "\n\nRunable job found:\n#{JSON.parse(msg.body)}"
+            job = Job.new(msg, backlog_address)
+            run_job(job)
+            puts "finished job:\n #{job.key}\n\n"
+          else
+            sqs.delete_message({
+              queue_url: backlog_address,
+              receipt_handle: msg.receipt_handle
+            })
+          end
+        rescue JSON::ParserError => e
+          puts "Trouble with #{msg.body}:\n____#{e}\n"
         end
+        puts 'Polling....'
       end
     end
     ec2.terminate_instancers(ids: [self_id])
@@ -53,20 +59,24 @@ class Worker
   end
 
   def death_ratio_acheived?
-    death_ratio >= 10
+    death_ratio >= DEATH_THREASHOLD
   end
 
   def death_ratio
-    counts = [finished_address, wip_address].map do |board|
+    counts = [
+      backlog_address,
+      wip_address
+    ].map do |board|
       sqs.get_queue_attributes(
         queue_url: board,
         attribute_names: ['ApproximateNumberOfMessages']
       ).attributes['ApproximateNumberOfMessages'].to_f
     end
 
+    backlog = counts[0]
     wip = counts[1]
-    wip = wip == 0.0 ? 1.0 : wip # guards against dividing by zero
-    counts[0] / wip
+    wip = wip <= 0.0 ? 1 : wip # guards against dividing by zero
+    finished / wip
   end
 
   def run_job(job)

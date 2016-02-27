@@ -68,13 +68,13 @@ class SpotMaker
 
     def best_price(image = slave_image)
       best_match = spot_prices.each.map(&:spot_price_history).
-                                flatten.map do |sph|
-                                  { 
-                                    spot_price: sph.spot_price,
-                                    availability_zone: sph.availability_zone,
-                                    instance_type: sph.instance_type 
-                                  }
-                                end.min_by { |sp| sp[:price] }
+        flatten.map do |sph|
+          { 
+            spot_price: sph.spot_price,
+            availability_zone: sph.availability_zone,
+            instance_type: sph.instance_type 
+          }
+        end.min_by { |sp| sp[:price] }
 
       # make sure this markup in max spot price is wanted
       best_match[:spot_price] = (best_match[:spot_price].to_f +
