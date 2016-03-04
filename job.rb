@@ -115,10 +115,11 @@ class Job
     if @board == wip_address
       wip_poller.poll(max_number_of_messages: 1) { |msg| puts msg.inspect }
     elsif @board == baocklog_address
-    sqs.delete_message(
-      queue_url: previous_board,
-      receipt_handle: receipt_handle
-    ) # delete from finished board?
+      sqs.delete_message(
+        queue_url: previous_board,
+        receipt_handle: receipt_handle
+      ) # delete from finished board?
+    end
   end
 
   def unzip_file_and_unpack
