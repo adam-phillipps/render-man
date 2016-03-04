@@ -34,9 +34,10 @@ class SpotMaker
         ).attributes['ApproximateNumberOfMessages'].to_f
       end
 
-      wip = counts[1]
-      wip = wip == 0.0 ? 1.0 : wip # guards against dividing by zero
-      counts[0] / wip
+      backlog = counts.first
+      wip = counts.last
+      wip = wip == 0.0 ? 1.0 : wip # guards against irrational values
+      backlog / wip
     end
 
     def adjusted_birth_ratio

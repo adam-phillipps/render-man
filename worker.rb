@@ -11,8 +11,8 @@ class Worker
     poll
   end
 
-  def boot_time
-    @instance_boot_time ||= Time.now.to_i#ec2.describe_instances(instance_ids:[self_id]).reservations[0].instances[0].launch_time
+  def boot_time # use `Time.now.to_i` instead of ec2 api call for testing
+    @instance_boot_time ||= ec2.describe_instances(instance_ids:[self_id]).reservations[0].instances[0].launch_time
   end
 
   def poll
@@ -22,7 +22,7 @@ class Worker
       backlog_poller.poll(
         wait_time_seconds: nil,
         max_number_of_messages: 1,
-        visibility_timeout: 30 # keep message invisible long enough to process to wip
+        visibility_timeout: 10 # keep message invisible long enough to process to wip
       ) do |msg, stats|
         begin
           if JSON.parse(msg.body).has_key?('Records')
@@ -63,20 +63,17 @@ class Worker
   end
 
   def death_ratio
-    counts = [
-      backlog_address,
-      wip_address
-    ].map do |board|
+    counts = [backlog_address, wip_address].map do |board|
       sqs.get_queue_attributes(
         queue_url: board,
         attribute_names: ['ApproximateNumberOfMessages']
       ).attributes['ApproximateNumberOfMessages'].to_f
     end
 
-    backlog = counts[0]
-    wip = counts[1]
-    wip = wip <= 0.0 ? 1 : wip # guards against dividing by zero
-    finished / wip
+    backlog = counts.first
+    wip = counts.last
+    wip = wip <= 0.0 ? 1.0 : wip # guards against irrational values
+    backlog / wip
   end
 
   def run_job(job)
@@ -94,8 +91,8 @@ class Worker
     end
   end
 
-  def self_id
-    'asdfasdf'#@id ||= HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
+  def self_id # hard code a value here for testing
+    @id ||= HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
   end
 end
 
