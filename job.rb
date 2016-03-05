@@ -122,11 +122,9 @@ class Job
         receipt_handle: receipt_handle
       ) # delete from finished board?
     elsif @board == finished_address
-      i = 0
-      wip_poller.before_request { throw :stop_polling if i  == 1}
-      wip_poller.poll(max_number_of_messages: 1, max_wait_time: 1) do |msg|
-        i += 1 # acts as a base case to break out of polling
-      end # poller deletes message by default
+      stop = false
+      wip_poller.before_request { throw :stop_polling if stop == true }
+      wip_poller.poll(max_number_of_messages: 1, max_wait_time: 1) { |msg| stop = true }
     end
   end
 
