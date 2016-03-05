@@ -8,6 +8,8 @@ require 'logger'
 require 'zip/zip'
 
 module Render
+  class BrokenJobException < Exception; end
+
   def s3
     Aws::S3::Client.new(
       region: ENV['AWS_REGION'],
@@ -27,12 +29,12 @@ module Render
     Aws::SQS::QueuePoller.new(backlog_address)
   end
 
-  def backlog_address
-    'https://sqs.us-west-2.amazonaws.com/088617881078/backlog_smashanalytics_sqs'
-  end
-
   def sqs
     Aws::SQS::Client.new(credentials: creds)
+  end
+
+  def backlog_address
+    'https://sqs.us-west-2.amazonaws.com/088617881078/backlog_smashanalytics_sqs'
   end
   
   def wip_address
@@ -41,6 +43,10 @@ module Render
 
   def finished_address
     'https://sqs.us-west-2.amazonaws.com/088617881078/finished_smashanalytics_sqs'
+  end
+
+  def needs_attention_address
+    'https://sqs.us-west-2.amazonaws.com/088617881078/needs_attention_queue'
   end
 
    def ec2

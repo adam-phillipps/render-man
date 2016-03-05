@@ -26,10 +26,12 @@ class Worker
       ) do |msg, stats|
         begin
           if JSON.parse(msg.body).has_key?('Records')
-            puts "\n\nRunable job found:\n#{JSON.parse(msg.body)}"
-            job = Job.new(msg, backlog_address)
-            run_job(job)
-            puts "finished job:\n #{job.key}\n\n"
+            puts "\n\nPossible job found:\n\n#{JSON.parse(msg.body)}"
+            catch :no_such_job_in_backlog do
+              job = Job.new(msg, backlog_address)
+              run_job(job)
+              puts "finished job:\n #{job.key}\n\n"
+            end
           else
             sqs.delete_message({
               queue_url: backlog_address,

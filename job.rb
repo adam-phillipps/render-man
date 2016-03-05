@@ -7,6 +7,7 @@ class Job
   def initialize(msg, board)
     @msg = msg
     @board = board
+    File.delete(File.join(a_e_dir, 'Done')) if File.file?(File.join(a_e_dir, 'Done'))
   end
 
   def body
@@ -94,31 +95,38 @@ class Job
 
   def pull_file_from_backlog
     puts 'pulling from backlog'
-    resp = s3.get_object(
-      response_target: file_path,
-      bucket: 'backlog-pointway', # customer in
-      key: key
-    )
-    puts 'finished pulling'
+    begin
+      resp = s3.get_object(
+        response_target: file_path,
+        bucket: 'backlog-pointway', # customer in
+        key: key
+      )
+      puts 'finished pulling'
+    rescue Aws::S3::Errors::NoSuchKey => e
+      puts "Couldn't find #{key} in backlog\n#{e.message}"
+      update_status(needs_attention_address)
+      throw :no_such_job_in_backlog
+    end
   end
 
   def receipt_handle
     @receipt_handle = msg.receipt_handle
   end
 
-  def update_status
+  def update_status(to = next_board)
     sqs.send_message(
-      queue_url: next_board,
+      queue_url: to,
       message_body: plain_text_body
     )
-    @board = next_board
-    delete_from_previous_board
+
+    @board = next_board if to == next_board
+    delete_from_message_origination_board
   end
 
-  def delete_from_previous_board
-    if @board == wip_address
+  def delete_from_message_origination_board
+    if @board == wip_address || @board == backlog_address
       sqs.delete_message(
-        queue_url: previous_board,
+        queue_url: backlog_address,
         receipt_handle: receipt_handle
       ) # delete from finished board?
     elsif @board == finished_address
