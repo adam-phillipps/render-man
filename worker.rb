@@ -12,7 +12,7 @@ class Worker
   end
 
   def boot_time # use `Time.now.to_i` instead of ec2 api call for testing
-    @instance_boot_time ||= ec2.describe_instances(instance_ids:[self_id]).reservations[0].instances[0].launch_time
+    @instance_boot_time ||= Time.now.to_i# ec2.describe_instances(instance_ids:[self_id]).reservations[0].instances[0].launch_time.to_i
   end
 
   def poll
@@ -92,7 +92,7 @@ class Worker
   end
 
   def self_id # hard code a value here for testing
-    @id ||= HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
+    @id ||= 'fdasasfd' # HTTParty.get('http://169.254.169.254/latest/meta-data/instance-id')
   end
 end
 

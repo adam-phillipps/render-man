@@ -39,33 +39,33 @@ class Job
 
   def delete_from_local_context
     puts 'deleting from local'
-    FileUtils.rm_rf Dir.glob("#{dir_path}/*")
+    FileUtils.rm_rf Dir.glob("#{a_e_file_dir_path}/*")
   end
 
   def delete_from_backlog_bucket
     puts 'deleting from backlog bucket'
-      s3.delete_object(
-        bucket: 'backlog-pointway',
-        key: key
-        )
+    s3.delete_object(
+      bucket: 'backlog-pointway',
+      key: key
+    )
   end
 
   def done_file_exists?
     File.file?(File.join(a_e_dir, 'Done'))
   end
 
-  def dir_path
+  def a_e_file_dir_path
     location = done_file_exists? ? 'finished' : 'backlog'
     File.join(a_e_dir, location)
   end
 
-  def output_key_prefix
-    key.split('_').first + '/'
+  def file_path # fix name/path for windows
+    current_name = done_file_exists? ? finished_key : key
+    File.join(a_e_file_dir_path, current_name)
   end
 
-  def file_path # fix name/path for windows
-    location = done_file_exists? ? 'finished' : 'backlog'
-    File.join(a_e_dir, location, key)
+  def finished_file_path
+    file_path.gsub(/\.\w{3}$/, '.mp4')
   end
 
   def key
@@ -73,19 +73,23 @@ class Job
   end
 
   def finished_key
-    key.gsub('.zip', '.mp4')
+    key.gsub(/\.\w{3}$/, '.mp4')
+  end
+
+  def output_key_prefix
+    key.split('_').first + '/'
   end
 
   def next_board
     board == backlog_address ? wip_address : finished_address
   end
 
-  def plain_text_body
-    msg.body
-  end
-
   def previous_board
     board == finished_address ? wip_address : backlog_address
+  end
+
+  def plain_text_body
+    msg.body
   end
 
   def pull_file_from_backlog
@@ -113,12 +117,16 @@ class Job
 
   def delete_from_previous_board
     if @board == wip_address
-      wip_poller.poll(max_number_of_messages: 1) { |msg| puts msg.inspect }
-    elsif @board == baocklog_address
       sqs.delete_message(
         queue_url: previous_board,
         receipt_handle: receipt_handle
       ) # delete from finished board?
+    elsif @board == finished_address
+      i = 0
+      wip_poller.before_request { throw :stop_polling if i  == 1}
+      wip_poller.poll(max_number_of_messages: 1, max_wait_time: 1) do |msg|
+        i += 1 # acts as a base case to break out of polling
+      end # poller deletes message by default
     end
   end
 
@@ -146,10 +154,6 @@ class Job
        zip_file.extract(f, f_path) unless File.exist?(f_path)
      end
     end
-  end
-
-  def finished_file_path
-    file_path.gsub('.zip', '.mov')
   end
 
   def push_file
