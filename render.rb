@@ -17,6 +17,14 @@ module Render
     )
   end
 
+  def backlog
+    File.join(a_e_dir, 'backlog')
+  end
+
+  def finished
+    File.join(a_e_dir, 'finished')
+  end
+
   def a_e_dir
     File.join('F:') # production mode.  change this to your working dir for testing
   end

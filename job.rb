@@ -56,8 +56,7 @@ class Job
   end
 
   def a_e_file_dir_path
-    location = done_file_exists? ? 'finished' : 'backlog'
-    File.join(a_e_dir, location)
+    done_file_exists? ? finished : backlog
   end
 
   def file_path # fix name/path for windows
@@ -137,26 +136,19 @@ class Job
   end
 
   def unzip_file_and_unpack
-    if file_path =~ /\.zip/
-      unzip_file
-      destination = '/Users/adam/code/F/backlog/'
-
-      Dir.glob(File.join(file_path, '*')).each do |file|
-        if File.exists? File.join(destination, File.basename(file))
-          FileUtils.move file, File.join(destination, "1-#{File.basename(file)}")
-        else
-          FileUtils.move file, File.join(destination, File.basename(file))
-        end
-      end
-    end
+    unzip_file if file_path =~ /\.zip/
   end
 
   def unzip_file
-    puts 'unzipping file'  
+    puts 'unzipping file'
+    name = key.split('.').first
+
     Zip::ZipFile.open(file_path) do |zip_file|
      zip_file.each do |f|
-       f_path = File.join(a_e_dir, 'backlog', f.name)
-       FileUtils.mkdir_p(File.dirname(f_path))
+      extension = '.' + f.name.split('.').last
+      regulized_name = name + extension
+
+       f_path = File.join(backlog, regulized_name)
        zip_file.extract(f, f_path) unless File.exist?(f_path)
      end
     end
