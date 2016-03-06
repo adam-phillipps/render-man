@@ -163,9 +163,8 @@ class Job
   def push_file_to_video_in
     puts 'pushing to finished bucket'
     resp = ''
-    finished_file = FileUtils.rm_rf Dir.glob("#{finished}/*").first
-    
-    File.open(finished_file, 'rb') do |file|
+    location = Dir.glob("#{finished}/*").first
+    File.open(location, 'rb') do |file|
       puts "Pushing file:\n#{finished_file_path}\n"
       resp = s3.put_object(bucket: video_in, key: finished_key, body: file)
       file.close
@@ -182,10 +181,11 @@ class Job
 
   def transcode_from_video_in
     puts 'transcode job started...'
-    transcode_job_id = ''
-    File.open(finished_file_path, 'rb') do |file|
+    # location = Dir.glob("#{finished}/*").first
+    # transcode_job_id = ''
+    # File.open(location, 'rb') do |file|
       transcode_job_id = create_elastic_transcoder_job(finished_key, preset_id, output_key_prefix)
-    end
+    # end
     puts transcode_job_id
   end
 

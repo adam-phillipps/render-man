@@ -26,8 +26,8 @@ module Render
   end
 
   def a_e_dir
-    # File.join('/Users/adam/code/F') # development mode
-    File.join('F:') # production mode.  change this to your working dir for testing
+    File.join('/Users/adam/code/F') # development mode
+    # File.join('F:') # production mode.  change this to your working dir for testing
   end
 
   def wip_poller
