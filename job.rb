@@ -100,6 +100,7 @@ class Job
         bucket: 'backlog-pointway', # customer in
         key: key
       )
+
       puts 'finished pulling'
     rescue Aws::S3::Errors::NoSuchKey => e
       puts "Couldn't find #{key} in backlog\n#{e.message}"
@@ -162,7 +163,9 @@ class Job
   def push_file_to_video_in
     puts 'pushing to finished bucket'
     resp = ''
-    File.open(finished_file_path, 'rb') do |file|
+    finished_file = FileUtils.rm_rf Dir.glob("#{finished}/*").first
+    
+    File.open(finished_file, 'rb') do |file|
       puts "Pushing file:\n#{finished_file_path}\n"
       resp = s3.put_object(bucket: video_in, key: finished_key, body: file)
       file.close
