@@ -181,11 +181,7 @@ class Job
 
   def transcode_from_video_in
     puts 'transcode job started...'
-    # location = Dir.glob("#{finished}/*").first
-    # transcode_job_id = ''
-    # File.open(location, 'rb') do |file|
       transcode_job_id = create_elastic_transcoder_job(finished_key, preset_id, output_key_prefix)
-    # end
     puts transcode_job_id
   end
 
