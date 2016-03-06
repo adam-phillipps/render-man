@@ -129,9 +129,7 @@ class Job
         receipt_handle: receipt_handle
       ) # delete from finished board?
     elsif @board == finished_address
-      stop = false
-      wip_poller.before_request { throw :stop_polling if stop == true }
-      wip_poller.poll(max_number_of_messages: 1, max_wait_time: 1) { |msg| stop = true }
+      delete_from_wip_queue
     end
   end
 
@@ -193,8 +191,17 @@ class Job
     File.delete(File.join(a_e_dir, 'Done')) if File.file?(File.join(a_e_dir, 'Done'))
     delete_from_backlog_queue
     delete_from_backlog_bucket
+    delete_from_wip_queue
     delete_from_local_context
-  end    
+  end
+
+  def delete_from_wip_queue
+    puts 'deleting from wip queue'
+    wip_poller.poll(max_number_of_messages: 1) do |msg|
+      wip_poller.delete_message(msg)
+      throw :stop_polling
+    end
+  end
 
   def delete_from_backlog_queue
     puts 'deleting from backlog queue'
