@@ -17,8 +17,17 @@ module Render
     )
   end
 
+  def backlog
+    File.join(a_e_dir, 'backlog')
+  end
+
+  def finished
+    File.join(a_e_dir, 'finished')
+  end
+
   def a_e_dir
-    File.join('F:') # production mode.  change this to your working dir for testing
+    File.join('/Users/adam/code', 'F')
+    # File.join('F:') # production mode.  change this to your working dir for testing
   end
 
   def wip_poller
